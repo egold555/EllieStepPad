@@ -19,6 +19,15 @@ CRGB leds[NUM_LEDS];
 #define STRIP_TYPE WS2812
 #define STRIP_COLOR_ORDER GRB
 
+//In millisonds
+const long TIMER_LENGTH = 15 * 1000;
+const long RAINBOW_ANIMATION_SPEED_DELAY = 50;
+
+long lastTimeWePressedTheButton = 0;
+
+uint8_t hue = 0;
+long lastTimeWeIncrementedHue = 0;
+
 void setup()
 {
     //register LEDS
@@ -32,31 +41,45 @@ void setup()
 
     //Random seed
     randomSeed(analogRead(0));
+
+    fill(0, 255, 0);
+    delay(3000);
+    fill(0, 0, 0);
 }
 
 void loop()
 {
+    long ms = millis();
+
     if (digitalRead(PIN_BUTTON) == LOW)
     {
-        fill(0, 255, 0);
+        lastTimeWePressedTheButton = (ms + TIMER_LENGTH);
+    }
+
+    if (ms > lastTimeWePressedTheButton)
+    {
+        fill(0, 0, 0);
     }
     else
     {
-        rainbowTest();
+
+        rainbowAnimation();
     }
 }
 
-uint8_t hue = 0;
-void rainbowTest()
+void rainbowAnimation()
 {
-    fill_rainbow(leds, NUM_LEDS, hue, 10);
-    FastLED.show();
-
-    hue++;
-
-    if (hue > 255)
+    long ms = millis();
+    if (ms > lastTimeWeIncrementedHue)
     {
-        hue = 0;
+        lastTimeWeIncrementedHue = (ms + RAINBOW_ANIMATION_SPEED_DELAY);
+        fill_rainbow_fixed(leds, NUM_LEDS, hue, 10);
+        FastLED.show();
+        hue++;
+        if (hue > 255)
+        {
+            hue = 0;
+        }
     }
 }
 
@@ -72,4 +95,19 @@ void fill(uint8_t r, uint8_t g, uint8_t b, int start, int end)
         leds[i] = CRGB(r, g, b);
     }
     FastLED.show();
+}
+
+//https://github.com/FastLED/FastLED/blob/11ed509736c6d88896f7680d1c4dfb9ff66667d9/colorutils.cpp
+//Fixes an issue with a red pixel flickering
+void fill_rainbow_fixed(struct CRGB *pFirstLED, int numToFill, uint8_t initialhue, uint8_t deltahue)
+{
+    CHSV hsv;
+    hsv.hue = initialhue;
+    hsv.val = 255;
+    hsv.sat = 255;
+    for (int i = 0; i < numToFill; i++)
+    {
+        pFirstLED[i] = hsv;
+        hsv.hue += deltahue;
+    }
 }
